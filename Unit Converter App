@@ -1,0 +1,362 @@
+import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const MyApp());
+}
+
+enum ConverterType { length, weight, temperature }
+
+List<String> getUnits(ConverterType type) {
+  switch (type) {
+    case ConverterType.length:
+      return ['Meter', 'Kilometer', 'Centimeter', 'Mile'];
+    case ConverterType.weight:
+      return ['Kilogram', 'Gram', 'Pound'];
+    case ConverterType.temperature:
+      return ['Celsius', 'Fahrenheit', 'Kelvin'];
+  }
+}
+
+// Convert input into a common base unit and then to target unit.
+double convertValue(double value, String from, String to, ConverterType type) {
+  if (from == to) return value;
+
+  double base;
+
+  switch (type) {
+    case ConverterType.length:
+      switch (from) {
+        case 'Kilometer':
+          base = value * 1000;
+          break;
+        case 'Centimeter':
+          base = value / 100;
+          break;
+        case 'Mile':
+          base = value * 1609.344;
+          break;
+        default:
+          base = value;
+      }
+
+      switch (to) {
+        case 'Kilometer':
+          return base / 1000;
+        case 'Centimeter':
+          return base * 100;
+        case 'Mile':
+          return base / 1609.344;
+        default:
+          return base;
+      }
+
+    case ConverterType.weight:
+      switch (from) {
+        case 'Gram':
+          base = value / 1000;
+          break;
+        case 'Pound':
+          base = value * 0.45359237;
+          break;
+        default:
+          base = value;
+      }
+
+      switch (to) {
+        case 'Gram':
+          return base * 1000;
+        case 'Pound':
+          return base / 0.45359237;
+        default:
+          return base;
+      }
+
+    case ConverterType.temperature:
+      // Convert to Celsius first.
+      switch (from) {
+        case 'Fahrenheit':
+          base = (value - 32) * 5 / 9;
+          break;
+        case 'Kelvin':
+          base = value - 273.15;
+          break;
+        default:
+          base = value;
+      }
+
+      switch (to) {
+        case 'Fahrenheit':
+          return base * 9 / 5 + 32;
+        case 'Kelvin':
+          return base + 273.15;
+        default:
+          return base;
+      }
+  }
+}
+
+// HOME SCREEN
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      title: 'Unit Converter',
+      theme: ThemeData(
+        primarySwatch: Colors.deepPurple,
+        scaffoldBackgroundColor: const Color(0xFFF5F2FA),
+      ),
+      home: const HomeScreen(),
+    );
+  }
+}
+
+class HomeScreen extends StatelessWidget {
+  const HomeScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Unit Converter'),
+        centerTitle: true,
+        backgroundColor: Colors.deepPurple,
+        foregroundColor: Colors.white,
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text(
+              'Choose a Converter',
+              style: TextStyle(fontSize: 25, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 25),
+            converterButton(
+              context,
+              'Length Converter',
+              Icons.straighten,
+              ConverterType.length,
+            ),
+            converterButton(
+              context,
+              'Weight Converter',
+              Icons.monitor_weight,
+              ConverterType.weight,
+            ),
+            converterButton(
+              context,
+              'Temperature Converter',
+              Icons.thermostat,
+              ConverterType.temperature,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget converterButton(
+    BuildContext context,
+    String title,
+    IconData icon,
+    ConverterType type,
+  ) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 15),
+      child: ElevatedButton.icon(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.deepPurple,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.all(20),
+        ),
+        icon: Icon(icon),
+        label: Text(title),
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ConverterScreen(type: type),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+// SHARED CONVERTER SCREEN
+class ConverterScreen extends StatefulWidget {
+  final ConverterType type;
+
+  const ConverterScreen({super.key, required this.type});
+
+  @override
+  State<ConverterScreen> createState() => _ConverterScreenState();
+}
+
+class _ConverterScreenState extends State<ConverterScreen> {
+  final TextEditingController controller = TextEditingController(text: '1');
+
+  late String fromUnit;
+  late String toUnit;
+
+  double result = 1;
+
+  @override
+  void initState() {
+    super.initState();
+    fromUnit = getUnits(widget.type)[0];
+    toUnit = getUnits(widget.type)[1];
+    calculate();
+  }
+
+  void calculate() {
+    double value = double.tryParse(controller.text) ?? 0;
+
+    setState(() {
+      result = convertValue(value, fromUnit, toUnit, widget.type);
+    });
+  }
+
+  @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('${widget.type.name.toUpperCase()} CONVERTER'),
+        backgroundColor: Colors.deepPurple,
+        foregroundColor: Colors.white,
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          children: [
+            const SizedBox(height: 25),
+
+            TextField(
+              controller: controller,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+                signed: true,
+              ),
+              decoration: const InputDecoration(
+                labelText: 'Enter Value',
+                border: OutlineInputBorder(),
+              ),
+              onChanged: (_) => calculate(),
+            ),
+
+            const SizedBox(height: 25),
+
+            const Align(
+              alignment: Alignment.centerLeft,
+              child: Text('From Unit'),
+            ),
+
+            DropdownButtonFormField<String>(
+              value: fromUnit,
+              decoration: const InputDecoration(border: OutlineInputBorder()),
+              items: getUnits(widget.type).map((unit) {
+                return DropdownMenuItem(value: unit, child: Text(unit));
+              }).toList(),
+              onChanged: (value) {
+                if (value != null) {
+                  setState(() {
+                    fromUnit = value;
+                    calculate();
+                  });
+                }
+              },
+            ),
+
+            const SizedBox(height: 20),
+
+            const Align(
+              alignment: Alignment.centerLeft,
+              child: Text('To Unit'),
+            ),
+
+            DropdownButtonFormField<String>(
+              value: toUnit,
+              decoration: const InputDecoration(border: OutlineInputBorder()),
+              items: getUnits(widget.type).map((unit) {
+                return DropdownMenuItem(value: unit, child: Text(unit));
+              }).toList(),
+              onChanged: (value) {
+                if (value != null) {
+                  setState(() {
+                    toUnit = value;
+                    calculate();
+                  });
+                }
+              },
+            ),
+
+            const SizedBox(height: 35),
+
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(25),
+              decoration: BoxDecoration(
+                color: Colors.deepPurple,
+                borderRadius: BorderRadius.circular(15),
+              ),
+              child: Column(
+                children: [
+                  const Text(
+                    'Converted Result',
+                    style: TextStyle(color: Colors.white70, fontSize: 18),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    result.toStringAsFixed(4),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 30,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(toUnit, style: const TextStyle(color: Colors.white)),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 25),
+
+            ElevatedButton.icon(
+              onPressed: () => Navigator.pop(context),
+              icon: const Icon(Icons.arrow_back),
+              label: const Text('Back to Home'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+double convertLength(double value, String from, String to) {
+  if (from == to) {
+    return value;
+  }
+
+  if (from == 'Meters' && to == 'Kilometers') {
+    return value / 1000;
+  }
+
+  if (from == 'Kilometers' && to == 'Meters') {
+    return value * 1000;
+  }
+
+  return value;
+}
